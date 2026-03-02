@@ -10,6 +10,13 @@
 **                used by the bootloader. The main firmware runs from
 **                external QSPI flash via memory-mapped (XiP) mode.
 **
+**                Firmware is placed at 0x90400000 (the address expected
+**                by the BrainFPV bootloader and radix2hd.json device
+**                definition in brainfpv_fw_packer). The first 4MB of
+**                QSPI (0x90000000-0x903FFFFF) is reserved by the
+**                bootloader; the firmware image occupies the next 4MB
+**                (0x90400000-0x907FFFFF).
+**
 **                Memory layout (same as STM32H743 for RAM regions):
 **                512K AXI-RAM mapped onto AXI bus on D1 domain
 **                128K SRAM1 mapped on D2 domain
@@ -39,19 +46,20 @@ ENTRY(Reset_Handler)
 0x38000000 to 0x3800FFFF   64K SRAM4, D3 domain
 0x38800000 to 0x38800FFF    4K BACKUP SRAM, Backup domain
 
-0x90000000 to 0x900FFFFF  1024K QSPI - isr vector + startup code
-0x90100000 to 0x901FFFFF  1024K QSPI - unused placeholder for CONFIG (managed externally)
-0x90200000 to 0x90FFFFFF  ~14MB QSPI - firmware code
-(config and blackbox are stored in QSPI sectors beyond firmware via flash driver)
+0x90000000 to 0x903FFFFF  4096K QSPI - reserved by BrainFPV bootloader
+0x90400000 to 0x9041FFFF   128K QSPI - isr vector + startup code     (FLASH)
+0x90420000 to 0x9043FFFF   128K QSPI - config placeholder            (FLASH_CONFIG)
+0x90440000 to 0x907FFFFF  3840K QSPI - firmware code                 (FLASH1)
+(config and blackbox stored in QSPI sectors beyond firmware via flash driver)
 */
 
 /* Specify the memory areas */
 MEMORY
 {
-    FLASH (rx)        : ORIGIN = 0x90000000, LENGTH = 1024K
-    FLASH_CONFIG (r)  : ORIGIN = 0x90100000, LENGTH = 1024K
+    FLASH (rx)        : ORIGIN = 0x90400000, LENGTH = 128K
+    FLASH_CONFIG (r)  : ORIGIN = 0x90420000, LENGTH = 128K
 
-    FLASH1 (rx)       : ORIGIN = 0x90200000, LENGTH = 14336K
+    FLASH1 (rx)       : ORIGIN = 0x90440000, LENGTH = 3840K
 
     ITCM_RAM (rwx)    : ORIGIN = 0x00000000, LENGTH = 64K
     DTCM_RAM (rwx)    : ORIGIN = 0x20000000, LENGTH = 128K

@@ -39,7 +39,7 @@ MEMORY
 }
 
 /* Where the main firmware image starts (for the jump address) */
-__firmware_start = 0x90000000;
+__firmware_start = 0x90400000;
 
 REGION_ALIAS("STACKRAM", DTCM_RAM)
 REGION_ALIAS("FASTRAM",  DTCM_RAM)

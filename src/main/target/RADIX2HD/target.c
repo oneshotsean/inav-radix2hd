@@ -18,14 +18,9 @@
 #include <stdint.h>
 
 #include "platform.h"
-#include "drivers/bus.h"
 #include "drivers/io.h"
 #include "drivers/pwm_mapping.h"
 #include "drivers/timer.h"
-#include "drivers/pinio.h"
-#include "drivers/sensor.h"
-
-BUSDEV_REGISTER_SPI_TAG(busdev_bmi270, DEVHW_BMI270, BMI270_SPI_BUS, BMI270_CS_PIN, NONE, 0, DEVFLAGS_NONE, IMU_BMI270_ALIGN);
 
 timerHardware_t timerHardware[] = {
     DEF_TIM(TIM1,  CH2, PE11,  TIM_USE_OUTPUT_AUTO, 0, 0),  // S1

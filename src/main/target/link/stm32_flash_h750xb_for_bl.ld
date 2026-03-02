@@ -7,7 +7,7 @@
 **                when built to run after the iNav bootloader.
 **
 **                Identical to stm32_flash_h750xb.ld — the firmware
-**                always runs from QSPI at 0x90000000 regardless of
+**                always runs from QSPI at 0x90400000 regardless of
 **                whether it was loaded by the iNav bootloader or the
 **                BrainFPV bootloader, so no address relocation is needed.
 **
@@ -24,10 +24,10 @@ ENTRY(Reset_Handler)
 /* Specify the memory areas */
 MEMORY
 {
-    FLASH (rx)        : ORIGIN = 0x90000000, LENGTH = 1024K
-    FLASH_CONFIG (r)  : ORIGIN = 0x90100000, LENGTH = 1024K
+    FLASH (rx)        : ORIGIN = 0x90400000, LENGTH = 128K
+    FLASH_CONFIG (r)  : ORIGIN = 0x90420000, LENGTH = 128K
 
-    FLASH1 (rx)       : ORIGIN = 0x90200000, LENGTH = 14336K
+    FLASH1 (rx)       : ORIGIN = 0x90440000, LENGTH = 3840K
 
     ITCM_RAM (rwx)    : ORIGIN = 0x00000000, LENGTH = 64K
     DTCM_RAM (rwx)    : ORIGIN = 0x20000000, LENGTH = 128K
