@@ -223,3 +223,4 @@ endmacro()
 
 define_target_stm32h7(43 i)
 define_target_stm32h7(A3 i)
+define_target_stm32h7(50 b)
