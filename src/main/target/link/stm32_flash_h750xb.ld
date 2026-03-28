@@ -1,0 +1,77 @@
+/*
+*****************************************************************************
+**
+**  File        : stm32_flash_h750xb.ld
+**
+**  Abstract    : Linker script for STM32H750xB Device executing from
+**                external QSPI NOR flash (memory-mapped at 0x90000000).
+**
+**                The STM32H750 has only 128K internal flash, which is
+**                used by the bootloader. The main firmware runs from
+**                external QSPI flash via memory-mapped (XiP) mode.
+**
+**                Firmware is placed at 0x90400000 (the address expected
+**                by the BrainFPV bootloader and radix2hd.json device
+**                definition in brainfpv_fw_packer). The first 4MB of
+**                QSPI (0x90000000-0x903FFFFF) is reserved by the
+**                bootloader; the firmware image occupies the next 4MB
+**                (0x90400000-0x907FFFFF).
+**
+**                Memory layout (same as STM32H743 for RAM regions):
+**                512K AXI-RAM mapped onto AXI bus on D1 domain
+**                128K SRAM1 mapped on D2 domain
+**                128K SRAM2 mapped on D2 domain
+**                 32K SRAM3 mapped on D2 domain
+**                 64K SRAM4 mapped on D3 domain
+**                 64K ITCM
+**                128K DTCM
+**
+*****************************************************************************
+*/
+
+/* Stack & Heap sizes */
+_Min_Heap_Size = 0;
+_Min_Stack_Size = 0x1800;
+
+/* Entry Point */
+ENTRY(Reset_Handler)
+
+/*
+0x00000000 to 0x0000FFFF   64K ITCM
+0x20000000 to 0x2001FFFF  128K DTCM
+0x24000000 to 0x2407FFFF  512K AXI SRAM, D1 domain, main RAM
+0x30000000 to 0x3001FFFF  128K SRAM1, D2 domain
+0x30020000 to 0x3003FFFF  128K SRAM2, D2 domain
+0x30040000 to 0x30047FFF   32K SRAM3, D2 domain
+0x38000000 to 0x3800FFFF   64K SRAM4, D3 domain
+0x38800000 to 0x38800FFF    4K BACKUP SRAM, Backup domain
+
+0x90000000 to 0x903FFFFF  4096K QSPI - reserved by BrainFPV bootloader
+0x90400000 to 0x9041FFFF   128K QSPI - isr vector + startup code     (FLASH)
+0x90420000 to 0x9043FFFF   128K QSPI - config placeholder            (FLASH_CONFIG)
+0x90440000 to 0x907FFFFF  3840K QSPI - firmware code                 (FLASH1)
+(config and blackbox stored in QSPI sectors beyond firmware via flash driver)
+*/
+
+/* Specify the memory areas */
+MEMORY
+{
+    FLASH (rx)        : ORIGIN = 0x90400000, LENGTH = 128K
+    FLASH_CONFIG (r)  : ORIGIN = 0x90420000, LENGTH = 128K
+
+    FLASH1 (rx)       : ORIGIN = 0x90440000, LENGTH = 3840K
+
+    ITCM_RAM (rwx)    : ORIGIN = 0x00000000, LENGTH = 64K
+    DTCM_RAM (rwx)    : ORIGIN = 0x20000000, LENGTH = 128K
+    RAM (rwx)         : ORIGIN = 0x24000000, LENGTH = 512K
+
+    D2_RAM (rwx)      : ORIGIN = 0x30000000, LENGTH = 256K /* SRAM1 + SRAM2 */
+
+    MEMORY_B1 (rx)    : ORIGIN = 0x60000000, LENGTH = 0K
+}
+
+REGION_ALIAS("STACKRAM", DTCM_RAM)
+REGION_ALIAS("FASTRAM",  DTCM_RAM)
+REGION_ALIAS("SLOWRAM",  D2_RAM)
+
+INCLUDE "stm32_flash_h7_split.ld"

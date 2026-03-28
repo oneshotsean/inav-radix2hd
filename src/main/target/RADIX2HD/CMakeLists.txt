@@ -1,0 +1,1 @@
+target_stm32h750xb(RADIX2HD BOOTLOADER)
