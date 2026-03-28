@@ -260,8 +260,8 @@
 #define SERIALRX_PROVIDER       SERIALRX_CRSF
 
 // *************** Output ***************************
-// 8 primary motor outputs; S9/S10 on UART6 pads (disable UART6 to use)
-#define MAX_PWM_OUTPUT_PORTS    8
+// S1-S8 primary motor outputs; S9/S10 on UART2 TX/RX pads (disable UART2 to use)
+#define MAX_PWM_OUTPUT_PORTS    10
 #define USE_DSHOT
 #define USE_ESC_SENSOR
 #define USE_SERIALSHOT
