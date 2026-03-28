@@ -136,6 +136,7 @@
 #define SPI3_SCK_PIN            PB3
 #define SPI3_MISO_PIN           PC11
 #define SPI3_MOSI_PIN           PC12
+#define SPI3_NSS_PIN            PA15
 
 // #define USE_BRAINFPV_FPGA           // Enable when fpga_drv.c is ported
 // #define BRAINFPVFPGA_SPI_INSTANCE   SPI3
@@ -186,9 +187,9 @@
 
 #define USE_BARO
 #define BARO_I2C_BUS            BUS_I2C1
-#define USE_BARO_BMP280
+// RADIX 2 ships with BMP388 or B2SMPB-02E; DPS310 also supported
+#define USE_BARO_BMP280         // covers BMP280 + BMP388 (auto-detected by chip ID)
 #define USE_BARO_DPS310
-#define USE_BARO_MS5611
 
 #define USE_MAG
 #define MAG_I2C_BUS             BUS_I2C1
