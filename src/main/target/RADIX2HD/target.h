@@ -20,13 +20,34 @@
 #define TARGET_BOARD_IDENTIFIER "RDX2HD"
 #define USBD_PRODUCT_STRING     "BrainFPV RADIX 2 HD"
 
-// Config stored in external QSPI NOR flash via M25P16 driver.
-// EEPROM_SIZE is the in-RAM buffer used by the config streamer.
+// Pin assignments and hardware config verified against BrainFPV/inav brainfpv branch
+// (BrainFPV fork INAV 8.0.0-BrainFPV-1, January 2025)
+
 #define EEPROM_SIZE             (4 * 4096)
+
+// Bootloader magic number - identifies this target to the BrainFPV bootloader
+#define BOOTLOADER_TARGET_MAGIC 0x785E9A14
+
+// SysTick configuration for 480MHz operation
+#define STM32_ST_IRQ_PRIORITY   7
+#define STM32_ST_USE_TIMER      13
+
+// Custom reset handler (BrainFPV bootloader interface)
+#define CUSTOM_RESET_PIN        PC13
+
+// Vector table base in AXI SRAM (firmware runs from QSPI XiP, vectors copied to RAM)
+#define VECT_TAB_BASE           0x24000000
+
+// CPU idle count calibration (used by BrainFPV fork for load monitoring)
+#define USE_MULT_CPU_IDLE_COUNTS
+#define IDLE_COUNTS_PER_SEC_AT_NO_LOAD_400  18506775
+#define IDLE_COUNTS_PER_SEC_AT_NO_LOAD_480  22208130
 
 #define USE_TARGET_CONFIG
 
 // *************** LEDs & Beeper *********************
+// RGB status LED support planned but not yet implemented (TODO in BrainFPV fork)
+// #define USE_BRAINFPV_RGB_STATUS_LED
 #define LED0                    PA7
 #define LED1                    PE5
 
@@ -60,8 +81,8 @@
 
 // *************** QuadSPI - NOR Flash (config + blackbox) ***
 // Flash is also used as the boot medium (QSPI XiP at 0x90000000).
-// The first M25P16_FIRST_SECTOR sectors are reserved for the firmware.
-// Config and blackbox use the remaining sectors.
+// M25P16_FIRST_SECTOR=64: with 64KB erase sectors, 64 * 64KB = 4MB
+// reserved for firmware at the start of QSPI (matching 0x90400000 base).
 #define USE_QUADSPI
 #define USE_QUADSPI_DEVICE_1
 #define QUADSPI1_SCK_PIN        PB2
@@ -82,13 +103,11 @@
 
 #define USE_FLASHFS
 #define USE_FLASH_M25P16
-// Sectors 0 to (M25P16_FIRST_SECTOR - 1) are reserved for firmware.
-// With 4KB sectors, 512 sectors = 2MB for firmware image.
-#define M25P16_FIRST_SECTOR     512
+// 64 sectors reserved for firmware (verified against BrainFPV fork)
+#define M25P16_FIRST_SECTOR     64
 #define M25P16_SECTORS_SPARE_END 3
 #define M25P16_QUADSPI_DEVICE   QUADSPIDEV_1
 
-// Config is stored in the external QSPI flash via the flash driver.
 #define CONFIG_IN_EXTERNAL_FLASH
 #undef USE_GYRO_REGISTER_DUMP
 
@@ -99,6 +118,7 @@
 #define USE_SDCARD_SDIO
 #define SDCARD_SDIO_DEVICE      SDIODEV_1
 #define SDCARD_SDIO_4BIT
+#define SDIO_USE_PULLUP
 #define SDCARD_DETECT_INVERTED
 #define SDCARD_DETECT_PIN       PD9
 
@@ -128,6 +148,7 @@
 #define USE_VCP
 #define VBUS_SENSING_PIN        PA9
 #define VBUS_SENSING_ENABLED
+#define USE_USB48MHZ_PLL
 
 #define USE_UART
 

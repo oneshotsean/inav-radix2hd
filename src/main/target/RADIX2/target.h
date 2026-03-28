@@ -17,102 +17,178 @@
 
 #pragma once
 
-// BrainFPV RADIX 2 - STM32H750 based (analog FPV with graphical gOSD)
-// Same MCU as RADIX2HD but with analog video chain instead of digital HD.
-// 8 motor outputs, 32MB QSPI NOR flash (no SD card slot), BMP280/BMP388 baro.
-// The graphical OSD is driven natively by the STM32H750 (no MAX7456 chip).
-// NOTE: gOSD driver requires BrainFPV-specific code not yet in this iNav fork.
-// OSD will fall back to standard iNav character OSD via MSP/UART if configured.
+// BrainFPV RADIX 2 (analog FPV variant) - STM32H750xB @ 480MHz
 //
-// NOTE: Pin assignments based on BrainFPV H750 architecture; verify against
-// hardware schematic before flashing.
+// Hardware verified against BrainFPV/inav brainfpv branch (Jan 2025).
+//
+// KEY HARDWARE DIFFERENCES vs RADIX2HD:
+//   - Custom FPGA co-processor for analog video sync + OSD pixel output
+//     (ported from dRonin BrainRE1; requires USE_BRAINFPV_FPGA driver)
+//   - Graphical gOSD rendered natively (USE_BRAINFPV_OSD, 4-bit color, QSPI)
+//   - BMI270 on SPI2 (not SPI1), Flash M25P16 on SPI1, FPGA on SPI3
+//   - No SD card; 32MB SPI NOR flash (32 sectors reserved for firmware)
+//   - Analog video sync via STM32 COMP2 + DAC1 (BRAINFPV_OSD_USE_STM32CMP)
+//   - Auto sync threshold via ADC2
+//   - FPGA-driven RGB status LEDs (USE_BRAINFPV_RGB_STATUS_LED)
+//   - Different LED, Beeper, UART, ADC, and PINIO pin assignments
+//   - VTX fault detection pin (VTXFAULT_PIN PD10)
+//   - Second PINIO for video input switching (PC15)
+//
+// PORTING STATUS for iNav 9:
+//   - USE_BRAINFPV_FPGA driver: NOT YET PORTED — disable FPGA features until
+//     the brainfpv/fpga_drv.c driver is adapted to iNav 9.
+//   - USE_BRAINFPV_OSD: NOT YET PORTED — standard iNav OSD (character-based)
+//     works in the meantime. gOSD requires the brainfpv/ driver directory.
+//   - USE_BRAINFPV_RGB_STATUS_LED: NOT YET PORTED.
+//   All other hardware (IMU, baro, flash, UARTs, ADC, outputs) is standard
+//   iNav 9 and fully functional.
 
 #define TARGET_BOARD_IDENTIFIER "RDX2"
 #define USBD_PRODUCT_STRING     "BrainFPV RADIX 2"
 
-// Config stored in external QSPI NOR flash (same architecture as RADIX2HD)
 #define EEPROM_SIZE             (4 * 4096)
+
+// Bootloader magic number
+#define BOOTLOADER_TARGET_MAGIC 0x65DF92FE
+
+// SysTick configuration for 480MHz
+#define STM32_ST_IRQ_PRIORITY   7
+#define STM32_ST_USE_TIMER      13
+
+#define CUSTOM_RESET_PIN        PC13
+#define VECT_TAB_BASE           0x24000000
+
+#define USE_MULT_CPU_IDLE_COUNTS
+#define IDLE_COUNTS_PER_SEC_AT_NO_LOAD_400  18506775
+#define IDLE_COUNTS_PER_SEC_AT_NO_LOAD_480  22208130
 
 #define USE_TARGET_CONFIG
 
 // *************** LEDs & Beeper *********************
-#define LED0                    PA7
-#define LED1                    PE5
+// RADIX 2 has FPGA-driven RGB LEDs but they are not yet ported to iNav 9.
+// Standard GPIO LEDs are available as fallback.
+// #define USE_BRAINFPV_RGB_STATUS_LED
+#define LED0                    PE6
+#define LED0_INVERTED
+#define LED1                    PE7
+#define LED1_INVERTED
 
-#define BEEPER                  PE4
+#define BEEPER                  PD14
 #define BEEPER_INVERTED
 
-// *************** LED Strip *************************
-#define USE_LED_STRIP
-// WS2811 output has a hardware inverter, signal is inverted
-#define WS2811_PIN              PA3
+// No WS2811 LED strip on RADIX 2 analog variant
 
 // *************** PINIO ****************************
-// PINIO1: VTX pit switch (power cycle the analog VTX via RC switch)
+// PINIO1: VTX pit switch (cut VTX power via RC switch)
+// PINIO2: Video input selector (dual camera switching)
 #define USE_PINIO
 #define USE_PINIOBOX
-#define PINIO1_PIN              PC14
+#define PINIO1_PIN              PD15
 #define PINIO1_FLAGS            PINIO_FLAGS_INVERTED
+#define PINIO2_PIN              PC15
 
-// *************** SPI1 - IMU (BMI270) ***************
+// VTX fault detection (overvoltage/overcurrent on VTX power rail)
+#define USE_VTXFAULT_PIN
+#define VTXFAULT_PIN            PD10
+
+// *************** SPI1 - NOR Flash (M25P16, 32MB) ***
+// Flash is used as boot medium (XiP) AND for config/blackbox.
+// 32 sectors (64KB each) = 2MB reserved for firmware from QSPI start.
 #define USE_SPI
 #define USE_SPI_DEVICE_1
 #define SPI1_SCK_PIN            PA5
 #define SPI1_MISO_PIN           PB4
 #define SPI1_MOSI_PIN           PD7
 
-#define USE_IMU_BMI270
-#define IMU_BMI270_ALIGN        CW0_DEG
-#define BMI270_SPI_BUS          BUS_SPI1
-#define BMI270_CS_PIN           PD3
-#define GYRO_INT_EXTI           PB3
-
-// *************** QuadSPI - NOR Flash (32MB, config + blackbox) **
-// Same QSPI XiP boot architecture as RADIX2HD.
-// First M25P16_FIRST_SECTOR sectors reserved for firmware image.
-// RADIX 2 has 32MB flash (vs 16MB on RADIX2HD).
-#define USE_QUADSPI
-#define USE_QUADSPI_DEVICE_1
-#define QUADSPI1_SCK_PIN        PB2
-#define QUADSPI1_BK1_IO0_PIN    PD11
-#define QUADSPI1_BK1_IO1_PIN    PD12
-#define QUADSPI1_BK1_IO2_PIN    PE2
-#define QUADSPI1_BK1_IO3_PIN    PA1
-#define QUADSPI1_BK1_CS_PIN     PB10
-
-#define QUADSPI1_BK2_IO0_PIN    NONE
-#define QUADSPI1_BK2_IO1_PIN    NONE
-#define QUADSPI1_BK2_IO2_PIN    NONE
-#define QUADSPI1_BK2_IO3_PIN    NONE
-#define QUADSPI1_BK2_CS_PIN     NONE
-
-#define QUADSPI1_MODE           QUADSPI_MODE_BK1_ONLY
-#define QUADSPI1_CS_FLAGS       (QUADSPI_BK1_CS_HARDWARE | QUADSPI_BK2_CS_NONE | QUADSPI_CS_MODE_LINKED)
-
 #define USE_FLASHFS
 #define USE_FLASH_M25P16
-// 512 sectors @ 4KB = 2MB reserved for firmware image
-#define M25P16_FIRST_SECTOR     512
+#define M25P16_SPI_BUS          BUS_SPI1
+#define M25P16_CS_PIN           PE14
+// 32 sectors reserved for firmware (verified against BrainFPV fork)
+#define M25P16_FIRST_SECTOR     32
 #define M25P16_SECTORS_SPARE_END 3
-#define M25P16_QUADSPI_DEVICE   QUADSPIDEV_1
 
 #define CONFIG_IN_EXTERNAL_FLASH
 #undef USE_GYRO_REGISTER_DUMP
 
 #define ENABLE_BLACKBOX_LOGGING_ON_SPIFLASH_BY_DEFAULT
 
+// *************** SPI2 - IMU (BMI270) ***************
+// NOTE: BMI270 is on SPI2 on RADIX 2 (unlike RADIX2HD which uses SPI1)
+#define USE_SPI_DEVICE_2
+#define SPI2_SCK_PIN            PD3
+#define SPI2_MISO_PIN           PC2
+#define SPI2_MOSI_PIN           PC1
+
+#define USE_IMU_BMI270
+#define IMU_BMI270_ALIGN        CW0_DEG
+#define BMI270_SPI_BUS          BUS_SPI2
+#define BMI270_CS_PIN           PE15
+#define GYRO_INT_EXTI           PE4
+
+// *************** SPI3 - FPGA co-processor ***
+// The FPGA handles: analog video sync, OSD pixel output via QSPI,
+// RGB LED control, SerialRx signal inversion, 3D video config.
+// Driver: brainfpv/fpga_drv.c (NOT YET PORTED to iNav 9).
+// The SPI3 bus is defined so the peripheral is initialized, but
+// USE_BRAINFPV_FPGA is commented out until the driver is ported.
+#define USE_SPI_DEVICE_3
+#define SPI3_SCK_PIN            PB3
+#define SPI3_MISO_PIN           PC11
+#define SPI3_MOSI_PIN           PC12
+
+// #define USE_BRAINFPV_FPGA           // Enable when fpga_drv.c is ported
+// #define BRAINFPVFPGA_SPI_INSTANCE   SPI3
+// #define BRAINFPVFPGA_SPI_DIVISOR    8
+// #define BRAINFPVFPGA_CS_PIN         PE1
+// #define BRAINFPVFPGA_RESET_PIN      PC4
+// #define BRAINFPVFPGA_CLOCK_PIN      PA8
+
+// *************** BrainFPV Graphical OSD ***
+// The RADIX 2 analog OSD is a 4-bit color graphical OSD rendered by the
+// STM32H750 and output through Quad-SPI to the FPGA, which overlays it
+// on the analog video signal. Not a MAX7456 character OSD.
+// Driver: brainfpv/brainfpv_osd.c (NOT YET PORTED to iNav 9).
+// Standard iNav character OSD works in the meantime.
+//
+// #define USE_BRAINFPV_OSD            // Enable when brainfpv_osd.c is ported
+// #define VIDEO_BITS_PER_PIXEL        4
+// #define INCLUDE_VIDEO_QUADSPI
+// #define VIDEO_QSPI_CLOCK_PIN        PB2
+// #define VIDEO_QSPI_IO0_PIN          PD11
+// #define VIDEO_QSPI_IO1_PIN          PC10
+// #define VIDEO_QSPI_IO2_PIN          PE2
+// #define VIDEO_QSPI_IO3_PIN          PA1
+// #define VIDEO_VSYNC                 PE3
+// #define VIDEO_HSYNC                 PD5
+//
+// OSD analog sync via STM32 comparator (COMP2) + DAC1 threshold
+// #define BRAINFPV_OSD_USE_STM32CMP
+// #define BRAINFPV_OSD_STM32CMP_DAC_INSTANCE  DAC1
+// #define BRAINFPV_OSD_STM32CMP_CMP_INSTANCE  COMP2
+// #define BRAINFPV_OSD_STM32CMP_CMP_INPUT_PIN  PE9
+// #define BRAINFPV_OSD_STM32CMP_CMP_OUTPUT_PIN PE8
+// #define BRAINFPV_OSD_SYNC_TH_DEFAULT  150
+// #define BRAINFPV_OSD_SYNC_TH_MIN      0
+// #define BRAINFPV_OSD_SYNC_TH_MAX      255
+//
+// Auto sync threshold detection via ADC2
+// #define USE_BRAINFPV_AUTO_SYNC_THRESHOLD
+// #define AUTO_SYNC_THRESHOLD_ADC_INSTANCE  ADC2
+// #define AUTO_SYNC_THRESHOLD_ADC_PIN       PC3
+// #define AUTO_SYNC_THRESHOLD_ADC_CHANNEL   ADC_CHANNEL_13
+
 // *************** I2C - Baro / Mag ******************
 #define USE_I2C
 #define USE_I2C_DEVICE_1
-#define I2C1_SCL                PB6
+#define I2C1_SCL                PB8
 #define I2C1_SDA                PB7
 
 #define USE_BARO
 #define BARO_I2C_BUS            BUS_I2C1
-// RADIX 2 ships with BMP280 or BMP388; enable both
 #define USE_BARO_BMP280
-#define USE_BARO_MS5611
 #define USE_BARO_DPS310
+#define USE_BARO_MS5611
 
 #define USE_MAG
 #define MAG_I2C_BUS             BUS_I2C1
@@ -124,27 +200,29 @@
 #define RANGEFINDER_I2C_BUS     BUS_I2C1
 
 // *************** UART *****************************
+// Note: UART pin assignments differ from RADIX2HD
 #define USE_VCP
 #define VBUS_SENSING_PIN        PA9
 #define VBUS_SENSING_ENABLED
+#define USE_USB48MHZ_PLL
 
 #define USE_UART
 
 #define USE_UART1
 #define UART1_RX_PIN            PB15
-#define UART1_TX_PIN            PB14
+#define UART1_TX_PIN            PB6
 
 #define USE_UART2
-#define UART2_RX_PIN            PD6
-#define UART2_TX_PIN            PD5
+#define UART2_RX_PIN            PA3
+#define UART2_TX_PIN            PA2
 
 #define USE_UART3
 #define UART3_RX_PIN            PB11
 #define UART3_TX_PIN            PD8
 
 #define USE_UART4
-#define UART4_RX_PIN            PB8
-#define UART4_TX_PIN            PA0
+#define UART4_RX_PIN            PD0
+#define UART4_TX_PIN            PD1
 
 #define USE_UART5
 #define UART5_RX_PIN            PB12
@@ -157,13 +235,14 @@
 #define SERIAL_PORT_COUNT       7   // VCP + UART1-6
 
 // *************** ADC ******************************
+// Note: ADC pin assignments differ from RADIX2HD
 #define USE_ADC
 #define ADC_INSTANCE            ADC1
 #define ADCVREF                 3285
 
-#define ADC_CHANNEL_1_PIN       PC0
-#define ADC_CHANNEL_2_PIN       PA6
-#define ADC_CHANNEL_3_PIN       PC1
+#define ADC_CHANNEL_1_PIN       PA6   // VBAT
+#define ADC_CHANNEL_2_PIN       PB0   // Current meter
+#define ADC_CHANNEL_3_PIN       PC0   // RSSI
 
 #define VBAT_ADC_CHANNEL            ADC_CHN_1
 #define CURRENT_METER_ADC_CHANNEL   ADC_CHN_2
@@ -174,14 +253,13 @@
 #define CURRENT_METER_SCALE     200
 
 // *************** Defaults *************************
-// RADIX 2 analog: enable OSD (standard iNav OSD via UART until gOSD driver ported)
 #define DEFAULT_FEATURES        (FEATURE_OSD | FEATURE_TX_PROF_SEL | FEATURE_TELEMETRY | FEATURE_CURRENT_METER | FEATURE_VBAT | FEATURE_BLACKBOX)
 #define DEFAULT_RX_TYPE         RX_TYPE_SERIAL
 #define SERIALRX_UART           SERIAL_PORT_USART3
 #define SERIALRX_PROVIDER       SERIALRX_CRSF
 
 // *************** Output ***************************
-// RADIX 2 has 8 motor outputs (S1-S8) + optional servo via UART6 pads
+// 8 primary motor outputs; S9/S10 on UART6 pads (disable UART6 to use)
 #define MAX_PWM_OUTPUT_PORTS    8
 #define USE_DSHOT
 #define USE_ESC_SENSOR

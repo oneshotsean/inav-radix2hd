@@ -28,10 +28,13 @@
 
 void targetConfiguration(void)
 {
-    // PINIO1 is the VTX pit switch on the RADIX 2 (analog variant).
-    // Map it to USER1 box so it can be toggled via a flight mode switch.
-    // When active: VTX power is cut (pit mode / safe ground operation).
+    // PINIO1 (PD15) is the VTX pit switch on the RADIX 2 analog variant.
+    // Map it to USER1 so the pilot can cut VTX power via a flight mode switch.
     pinioBoxConfigMutable()->permanentId[0] = BOX_PERMANENT_ID_USER1;
+
+    // PINIO2 (PC15) is the video input selector (dual camera switching).
+    // Map it to USER2 so the pilot can switch cameras via a flight mode switch.
+    pinioBoxConfigMutable()->permanentId[1] = BOX_PERMANENT_ID_USER2;
 }
 
 #endif
