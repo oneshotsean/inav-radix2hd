@@ -1,1 +1,1 @@
-target_stm32f765xg(RADIX2)
+target_stm32h750xb(RADIX2 BOOTLOADER)

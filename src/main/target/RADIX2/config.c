@@ -22,13 +22,16 @@
 
 #ifdef USE_TARGET_CONFIG
 
+#include "fc/fc_msp_box.h"
+#include "io/piniobox.h"
 #include "io/serial.h"
 
 void targetConfiguration(void)
 {
-    // UART3 defaults to CRSF/ELRS receiver input
-    // This is set via SERIALRX_UART in target.h but can be overridden here
-    // if additional default configuration is needed in future.
+    // PINIO1 is the VTX pit switch on the RADIX 2 (analog variant).
+    // Map it to USER1 box so it can be toggled via a flight mode switch.
+    // When active: VTX power is cut (pit mode / safe ground operation).
+    pinioBoxConfigMutable()->permanentId[0] = BOX_PERMANENT_ID_USER1;
 }
 
 #endif
